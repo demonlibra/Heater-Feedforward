@@ -7,6 +7,13 @@
 
 Сценарий не проверен.
 
+### Последовательность работы:
+1. Нагрев HotEnd`а.
+2. Ожидание стабилизации температуры.
+3. Подача филамента.
+4. Определение максимальной и минимальной температур в процессе стабилизации.
+5. Возврат к пункту 3 с изменением коэффициента коррекции обратной связи.
+
 ### Примечания:
 [UNI Форум](https://uni3d.store/viewtopic.php?t=1030)  
 [M309 Pn Saaa:bbb: Set or report heater feedforward](https://docs.duet3d.com/en/User_manual/Reference/Gcodes#m309-set-or-report-heater-feedforward)  
