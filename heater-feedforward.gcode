@@ -6,8 +6,8 @@
 ;-----------------------------------------------------------------------
 
 var k_start=0.000             ; Указать начальный коэффициент коррекции
-var k_step=0.010              ; Указать изменение коэффициента за шаг
-var steps_number=3            ; Указать количество тестов
+var k_step=0.005              ; Указать изменение коэффициента за шаг
+var steps_number=5            ; Указать количество тестов
 
 var filament_diameter=1.75    ; Указать диаметр филамента, мм
 var filament_length=60        ; Указать длину филамента для одного теста, мм
@@ -16,10 +16,10 @@ var extrusion_volume_speed=10 ; Указать объём экструзии, м
 var hotend=1                  ; Указать номер HotEnd`а
 var temperature_hotend=230    ; Указать температуру HotEnd`а, C
 
-var tool_number=0             ; Указать номер инструмента
+var tool=0                    ; Указать номер инструмента
 
-var temperature_deviation=0.3 ; Указать допустимое отклонение температуры при определении стабилизации температуры, С
-var time_stability=10         ; Указать время определения стабилизации температуры, сек
+var temperature_deviation=0.5 ; Указать допустимое отклонение температуры при определении стабилизации температуры, С
+var time_stability=30         ; Указать время определения стабилизации температуры, сек
 
 ;-----------------------------------------------------------------------
 ;-----------------------------------------------------------------------
@@ -29,12 +29,15 @@ var time_stability=10         ; Указать время определения
 
 ; --------------------------- Стартовый код ----------------------------
 
-T{var.tool_number}                                                      ; Выбор инструмента
+T{var.tool}                                                             ; Выбор инструмента
 M83                                                                     ; Выбор относительных координат оси экструдера
+
+echo "Нагрева HotEnd`а до температуры "^var.temperature_hotend
 M109 S{var.temperature_hotend}                                          ; Нагрев HotEnd`а с ожиданием достижения температуры
+echo "Ожидание стабилизации температуры"
 
 var check_counter=0
-while var.check_counter <= var.time_stability                           ; Ожидание стабилизации температуры
+while var.check_counter < var.time_stability                            ; Ожидание стабилизации температуры
    if {mod(heat.heaters[var.hotend].current-var.temperature_hotend) <= var.temperature_deviation}
       set var.check_counter=var.check_counter+1                         ; Счётчик стабильной температуры
    else
@@ -75,8 +78,9 @@ while var.k_counter <= var.steps_number
 
       G4 S1                                                             ; Пауза 1 секунду
 
-   echo "Максимальная температура "^var.max_temperature                 ; Вывод максимальной температуры в консоль
-   echo "Минимальная температура "^var.min_temperature                  ; Вывод минимальной температуры в консоль
+   echo "Максимальная температура "^var.max_temperature^"Отклонение +"^var.max_temperature-var.temperature_hotend  ; Вывод максимальной температуры в консоль
+   echo "Минимальная температура "^var.min_temperature^"Отклонение -"^var.temperature_hotend-var.min_temperature   ; Вывод минимальной температуры в консоль
+   echo "Разброс температуры "^var.max_temperature-var.min_temperature
 
    set var.k_counter=var.k_counter+1                                    ; Увеличение счётчика шага коэффициента
 
