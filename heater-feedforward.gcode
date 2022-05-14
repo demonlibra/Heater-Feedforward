@@ -1,25 +1,27 @@
+;-----------------------------------------------------------------------
 ;--- Калибровка коррекции нагревателя HotEnd`а от скорости экструзии ---
 ;-----------------------------------------------------------------------
 
+; https://uni3d.store/viewtopic.php?t=1030
+; https://docs.duet3d.com/en/User_manual/Reference/Gcodes#m309-set-or-report-heater-feedforward
 
 ;============================== Параметры ==============================
 ;-----------------------------------------------------------------------
 
 var k_start=0.000             ; Указать начальный коэффициент коррекции
 var k_step=0.005              ; Указать изменение коэффициента за шаг
-var steps_number=5            ; Указать количество тестов
+var steps=5                   ; Указать количество тестов
 
 var filament_diameter=1.75    ; Указать диаметр филамента, мм
 var filament_length=60        ; Указать длину филамента для одного теста, мм
-var extrusion_volume_speed=10 ; Указать объём экструзии, мм.куб/сек
+var extrusion_flowrate=10     ; Указать требуемую объёмную скорость экструзии, мм.куб/сек
 
-var hotend=1                  ; Указать номер HotEnd`а
 var temperature_hotend=230    ; Указать температуру HotEnd`а, C
-
-var tool=0                    ; Указать номер инструмента
-
 var temperature_deviation=0.5 ; Указать допустимое отклонение температуры при определении стабилизации температуры, С
 var time_stability=30         ; Указать время определения стабилизации температуры, сек
+
+var tool=0                    ; Указать номер инструмента
+var hotend=1                  ; Указать номер HotEnd`а
 
 ;-----------------------------------------------------------------------
 ;-----------------------------------------------------------------------
@@ -32,10 +34,10 @@ var time_stability=30         ; Указать время определения
 T{var.tool}                                                             ; Выбор инструмента
 M83                                                                     ; Выбор относительных координат оси экструдера
 
-echo "Нагрева HotEnd`а до температуры "^var.temperature_hotend
+echo "Нагрев HotEnd`а до температуры "^var.temperature_hotend
 M109 S{var.temperature_hotend}                                          ; Нагрев HotEnd`а с ожиданием достижения температуры
-echo "Ожидание стабилизации температуры"
 
+echo "Ожидание стабилизации температуры"
 var check_counter=0
 while var.check_counter < var.time_stability                            ; Ожидание стабилизации температуры
    if {mod(heat.heaters[var.hotend].current-var.temperature_hotend) <= var.temperature_deviation}
@@ -48,28 +50,29 @@ while var.check_counter < var.time_stability                            ; Ожи
 ; ---------------------------- Калибровка ------------------------------
 
 var sectional_area=pi*var.filament_diameter*var.filament_diameter/4     ; Расчёт площади сечения прутка, мм.кв
-var extrusion_speed=var.extrusion_volume_speed/var.sectional_area*60    ; Расчёт скорости подачи филамента, мм/мин
+var extrusion_speed=var.extrusion_flowrate/var.sectional_area*60        ; Расчёт скорости подачи филамента, мм/мин
 
 var k_counter=1
 var max_temperature=var.temperature_hotend
 var min_temperature=var.temperature_hotend
 
-while var.k_counter <= var.steps_number
+while var.k_counter <= var.steps
    M309 S{var.k_start+(var.k_counter-1)*var.k_step}                     ; Задание коэффициента коррекции нагревателя
    echo "Коэффициент коррекции нагревателя M309 S"^var.k_start+(var.k_counter-1)*var.k_step
 
    G1 E{var.filament_length} F{var.extrusion_speed}                     ; Подача филамента
-
-   set var.max_temperature=var.temperature_hotend
-   set var.min_temperature=var.temperature_hotend
-   set var.check_counter=0
+   echo "Ожидание стабилизации температуры"
+   
+   set var.max_temperature=var.temperature_hotend                       ; Сброс значения максимальной температуры
+   set var.min_temperature=var.temperature_hotend                       ; Сброс значения минимальной температуры
+   set var.check_counter=0                                              ; Сброс счётчика проверки стабилизации температуры
 
    while var.check_counter <= var.time_stability                        ; Ожидание стабилизации температуры
       if {heat.heaters[var.hotend].current > var.max_temperature}       ; Определение максимумальной температуры
          set var.max_temperature=heat.heaters[var.hotend].current
 
       if {heat.heaters[var.hotend].current < var.min_temperature}       ; Определение минимальной температуры
-         set var.max_temperature=heat.heaters[var.hotend].current
+         set var.min_temperature=heat.heaters[var.hotend].current
 
       if {mod(heat.heaters[var.hotend].current-var.temperature_hotend) < var.temperature_deviation}
          set var.check_counter=var.check_counter+1                      ; Счётчик стабильной температуры
